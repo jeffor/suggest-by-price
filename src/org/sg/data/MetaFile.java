@@ -43,9 +43,9 @@ public class MetaFile extends SFile {
 	}
 
 	/* 写元数据文件 */
-	public void write(int id, Item item)
+	public void write(Item item)
 			throws IOException {
-		long locate = getMetaFile(id);
+		long locate = getMetaFile(item.id);
 		metaFile.seek(locate);
 		metaFile.writeInt(item.elemLength);
 		metaFile.writeFloat(item.weight);
@@ -65,27 +65,4 @@ public class MetaFile extends SFile {
 		metaFile = files[indexNum];
 		return itemid * metaSize;
 	}
-
-//	RandomAccessFile[] newFiles = new RandomAccessFile[fileCount];
-//	RandomAccessFile newFile = null;
-//
-//	private void writeNewItem(int id, int elemLength, float weight, long date)
-//			throws IOException {
-//		long locate = getNewFile(id);
-////		System.out.println("write new file "+id	);
-//		newFile.seek(locate);
-//		newFile.writeInt(elemLength);
-//		newFile.writeFloat(weight);
-//		newFile.writeLong(date);
-//	}
-//
-//	private long getNewFile(int id) throws IOException {
-//		if (indexNum >= newFiles.length)
-//			newFiles = Arrays.copyOf(newFiles, 3 * indexNum / 2);
-//		if (newFiles[indexNum] == null)
-//			newFiles[indexNum] = new RandomAccessFile(new File("./lib/suggest.meta_"
-//					+ indexNum), "rw");
-//		newFile = newFiles[indexNum];
-//		return (id%capacity) * (metaSize + 5);
-//	}
 }

@@ -34,7 +34,7 @@ public class Update extends Operate {
 						rst.getTimestamp(dateField));
 			rst.last();
 			if (rst.getRow() > 0) {
-				curDate = rst.getDate(dateField);
+				curDate = rst.getTimestamp(dateField);
 				if (curDate == null || curDate.getTime() == update_time)
 					start += delta;
 				else {
@@ -52,13 +52,8 @@ public class Update extends Operate {
 		Item item = metaFile.read(id);
 		if (date.getTime() <= item.update_time)
 			return;
-		item.update_time = date.getTime();
-		item.weight = priceFile.addPrice(id, item, price);
-		++item.elemLength;
-		item.current_pice = price;
-		if(item.min_price > price && price > 0)
-			item.min_price = price;
-		metaFile.write(id, item);
+		priceFile.addPriceWithUpdateItem(item, price, date);
+		metaFile.write(item);
 		if (maxId < id)
 			maxId = id;
 	}

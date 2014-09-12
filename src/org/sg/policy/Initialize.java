@@ -64,7 +64,7 @@ public class Initialize extends Operate {
 			if (item.update_time > update_time)
 				update_time = item.update_time;
 		}
-		metaFile.write(id, item);
+		metaFile.write(item);
 		if (maxId < id)
 			maxId = id;
 	}

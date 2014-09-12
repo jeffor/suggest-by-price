@@ -10,16 +10,14 @@ public class MergeWeight extends Operate {
 	public void run() throws IOException, SQLException {
 		openFiles();
 		Item item = null;
-		for (int id = 0; id < maxId; ++id) {
-			item = metaFile.read(id);
-			if(id % 100000 == 0)
-				System.out.println("merge id = "+id);
+		metaFile.goHead((int) maxId);
+		while ((item = metaFile.nextItem()) != null) {
 			if (item.elemLength == 0)
 				continue;
-			item.weight = priceFile.readWeight(id, item.elemLength);
-			item.current_pice = priceFile.curPrice();
-			item.min_price = priceFile.minPrice();
-			metaFile.write(id, item);
+			priceFile.caculateWeightWitenUpdateItem(item);
+			metaFile.write(item);
+			if (item.id % 100000 == 0)
+				System.out.println("merge id = " + item.id);
 		}
 		closeFiles();
 	}
