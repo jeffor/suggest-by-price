@@ -5,13 +5,12 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.util.Arrays;
-import java.util.Date;
 
 public class PriceFile extends SFile {
 	private static final int elemSize = 4; // (price)
 	private static final int elemCount = 10; // 每个文件对同id记录的存储量
 	private static final String dataFileName = "./lib/suggest.dt_"; // 文件名前缀
-	public static final int priceBufferSize = elemCount * fileCount;
+	private static final int priceBufferSize = elemCount * fileCount;
 
 	/* file index */
 	private int fileNum; // 文件编号缓存
@@ -35,38 +34,23 @@ public class PriceFile extends SFile {
 		return -1;
 	}
 
-	private int count(int length) {
-		return (length > priceBufferSize) ? priceBufferSize : length;
+	/** 添加新价格，更新新权重 */
+	public void updateItem(Item item, float newPrice, long newUpdateTime)
+			throws IOException {
+		updateWeight(item, newPrice); // 更新 weight
+		++item.elemLength;
+		item.current_pice = newPrice; // 更新 price
+		if (newUpdateTime > item.update_time) {
+			item.update_time = newUpdateTime;
+			if (newPrice < item.min_price)
+				item.min_price = newPrice; // 更新 min_price
+		}
 	}
 
-	private int plusLength(int length) {
-		return (length > priceBufferSize) ? (length % priceBufferSize) + 1
-				+ priceBufferSize : length + 1;
-	}
-
-	private float updateWeight(Item item, float price, int count) {
-		return (item.elemLength > priceBufferSize) ? (item.weight
-				* item.current_pice * count + price - item.current_pice)
-				/ count(item.elemLength) : (item.weight * item.current_pice
-				* count + price)
-				/ count(item.elemLength);
-	}
-
-	/** 添加新价格，返回新权重 */
-	public void addPriceWithUpdateItem(Item item, float newPrice,
-			Date newUpdateTime) throws IOException {
-		writePrice(item.id, item.elemLength, newPrice); // 写入新价格
-		int oldCount = count(item.elemLength);
-		item.elemLength = plusLength(item.elemLength);
-		item.weight = updateWeight(item, newPrice, oldCount);
-		if (newUpdateTime != null && newUpdateTime.getTime() > item.update_time)
-			item.update_time = newUpdateTime.getTime();
-		item.current_pice = newPrice;
-		if (newPrice < item.min_price)
-			item.min_price = newPrice;
-	}
-
-	public void caculateWeightWitenUpdateItem(Item item) throws IOException {
+	/** 通过历史价格更新权重 */
+	public void updateItem(Item item) throws IOException {
+		if (item.elemLength == 0)
+			return;
 		int count = count(item.elemLength);
 		float sum = 0;
 		long locate = 0;
@@ -83,7 +67,7 @@ public class PriceFile extends SFile {
 				sum += item.current_pice;
 			}
 		}
-		item.weight = (count == 0) ? 0 : sum / count / item.current_pice;
+		item.weight = sum / count / item.current_pice;
 	}
 
 	/* 获得存储文件 , 返回推荐文件偏移量 */
@@ -98,6 +82,21 @@ public class PriceFile extends SFile {
 					+ fileNum), "rw");
 		dataFile = files[fileNum];
 		return (itemid * elemCount + elemLength % elemCount) * elemSize;
+	}
+	
+	private int count(int length) {
+		return (length > priceBufferSize) ? priceBufferSize : length;
+	}
+
+	private void updateWeight(Item item, float price) throws IOException {
+		int oldCount = count(item.elemLength);
+		if (item.elemLength >= priceBufferSize) {
+			float oldPrice = readPrice(item.id, item.elemLength + 1);
+			item.weight = (item.weight * item.current_pice * oldCount + price - oldPrice)
+					/ oldCount/price;
+		} else
+			item.weight = (item.weight * item.current_pice * oldCount + price)
+					/ (oldCount + 1)/price;
 	}
 
 }

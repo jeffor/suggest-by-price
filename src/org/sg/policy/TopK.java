@@ -5,25 +5,45 @@ import java.sql.SQLException;
 
 import org.sg.data.Item;
 import org.sg.util.Heap;
+import org.sg.util.ItemSet;
 
 public class TopK extends Operate {
-
-	public Item[] run(int K, long baseTime) throws IOException, SQLException {
+	private Heap heap;
+	ItemSet set;
+	
+	public void run(int K, long baseTime) throws IOException, SQLException {
 		openFiles();
-		Heap heap = new Heap(K);
+		heap = new Heap(K);
 		Item item = null;
-		metaFile.goHead((int) maxId);
+		metaFile.goHead((int) maxItemid, 0);
 		while ((item = metaFile.nextItem()) != null) {
 			if (item.id % 100000 == 0) // 进度提示
 				System.out.format("topN itemid = %d\n", item.id);
-			if (item.elemLength == 0 || item.update_time < baseTime
-					|| item.weight > 8 || item.current_pice < 0
-					|| item.min_price != item.current_pice)
-				continue;
-			heap.add(item);
+			heap.add(item, baseTime);
 		}
-		heap.sort();
 		closeFiles();
-		return heap.iterator();
 	}
+	
+	public void run(long baseTime) throws IOException, SQLException {
+		openFiles();
+		set = new ItemSet();
+		Item item = null;
+		metaFile.goHead((int) maxItemid, 0);
+		while ((item = metaFile.nextItem()) != null) {
+			if (item.id % 100000 == 0) // 进度提示
+				System.out.format("topN itemid = %d\n", item.id);
+			set.add(item, baseTime);
+		}
+		closeFiles();
+	}
+	
+	public Heap getHeap(){
+		return heap;
+	}
+	
+	public ItemSet getSet(){
+		return set;
+	}
+	
+	
 }

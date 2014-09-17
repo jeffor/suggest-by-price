@@ -3,81 +3,150 @@ package test.sg.data;
 import java.io.IOException;
 import java.sql.SQLException;
 import java.text.ParseException;
-import java.text.SimpleDateFormat;
+import java.util.Collection;
 import java.util.Date;
 
-import org.sg.data.Item;
+import org.apache.solr.client.solrj.SolrServerException;
+import org.apache.solr.common.SolrInputDocument;
+import org.sg.data.SolrApi;
 import org.sg.policy.Initialize;
 import org.sg.policy.MergeWeight;
 import org.sg.policy.TopK;
 import org.sg.policy.Update;
+import org.sg.util.ItemSet;
 
 public class Test {
-	public static void main(String[] argvs) throws SQLException, IOException,
-			NumberFormatException, ParseException, InterruptedException {
-//		 /*
+
+	private static SolrApi solr = new SolrApi();
+
+	/**
+	 * 初始化 主要实现历史价格采集 和 计算结构的建立
+	 * 
+	 * @param from
+	 *            起始id
+	 * @return void
+	 * */
+	public static void init(int from) throws IOException, SQLException {
+		Initialize init = new Initialize();
+		init.run("jdbc:mysql://192.168.1.30:3306/extension", "root",
+				"4rfv&UJM", "select * from site_item_price", from);
+		// init.run("jdbc:mysql://192.168.3.107:3306/test", "user", "pwd",
+		// "select * from site_item_price", from);
+	}
+
+	/**
+	 * 合并历史价格 计算 元数据
+	 * 
+	 * @param startId
+	 *            起始数据id
+	 * */
+	public static void merge(int startId) throws IOException, SQLException {
+		MergeWeight mer = new MergeWeight();
+		mer.run(startId);
+	}
+
+	/**
+	 * 更新 检索引擎数据
+	 * 
+	 * @param url
+	 *            检索引擎地址
+	 * */
+	public static void update(String url) throws IOException, SQLException,
+			InterruptedException, ParseException, NumberFormatException,
+			SolrServerException {
+		ItemSet set = upload(url); // 更新索引并 TopN 堆
+		Update update = new Update(); // 初始化数据更新对象
+		while (true) {
+			set.clear();
+			update.run("jdbc:mysql://192.168.1.30:3306/extension", "root",
+					"4rfv&UJM", "select * from site_item_price", set);
+			// update.run("jdbc:mysql://192.168.3.107:3306/test", "user", "pwd",
+			// "select * from site_item_price", heap);
+			upload(set, url);
+			Thread.sleep(1000 * 60 * 60);
+		}
+	}
+
+	/**
+	 * 上传 topN 数据至检索引擎
+	 * 
+	 * @param num
+	 *            N值
+	 * @param url
+	 *            检索引擎地址
+	 * @return heap topN堆
+	 * */
+	private static ItemSet upload(String url) throws ParseException,
+			NumberFormatException, SolrServerException, IOException,
+			SQLException {
+		long baseTime = System.currentTimeMillis() - 24*60*60*1000;
+		TopK top = new TopK();
+		top.run(baseTime);
+		upload(top.getSet(), url);
+		return top.getSet();
+	}
+
+	/**
+	 * 将堆中的数据上传至检索引擎
+	 * 
+	 * @throws ParseException
+	 * @throws SQLException
+	 */
+	private static void upload(ItemSet set, String url)
+			throws NumberFormatException, SolrServerException, IOException,
+			ParseException, SQLException {
+		System.out.println("sync time = " + new Date());
+		Collection<SolrInputDocument> docs = solr.readDocs(set,
+				"root", "4rfv&UJM", "jdbc:mysql://192.168.1.30:3306/extension");
+		// Collection<SolrInputDocument> docs = solr.readDocs(heap.iterator(),
+		// fmt
+		// .parse(date).getTime(), "user", "pwd",
+		// "jdbc:mysql://192.168.3.107:3306/test");
+		if (docs.size() > 0) {
+			solr.connectServer(url);
+			solr.upload(docs);
+			solr.closeConnection();
+		}
+		System.out.println("import indexDoc number = " + docs.size());
+	}
+
+	/**
+	 * 清空指定索引
+	 * 
+	 * @param url
+	 *            指定索引url
+	 * @return void
+	 * */
+	public static void clearIndex(String url) throws SolrServerException,
+			IOException {
+		solr.connectServer(url);
+		solr.clearIndex();
+		solr.closeConnection();
+	}
+
+	public static void main(String[] argvs) throws NumberFormatException,
+			IOException, SQLException, InterruptedException, ParseException,
+			SolrServerException {
 		if (argvs[0].equals("-init")) {
 			init(Integer.parseInt(argvs[1]));
 		} else if (argvs[0].equals("-merge")) {
-			merge();
+			merge(Integer.parseInt(argvs[1]));
 		} else if (argvs[0].equals("-update")) {
-			while (true) {
-				Thread.sleep(1000 * 60 * 60);
-				update();
-			}
+			update("http://192.168.1.30:8080/solr/suggest_system");
 		} else if (argvs[0].equals("-server")) {
 			init(Integer.parseInt(argvs[1]));
-			merge();
-			while (true) {
-				Thread.sleep(1000 * 60 * 60);
-				update();
-			}
-		} else
-			select(Integer.parseInt(argvs[0]), argvs[1] + " " + argvs[2]);
-//		 */
-		/*
-//		  init(0);
-//		  merge();
-		  select(100, "2010-01-15 00:00:00");
-//		  update();
-		 */
-	}
-
-	public static void init(int from) throws IOException, SQLException {
-		Initialize init = new Initialize();
-//		init.run("jdbc:mysql://192.168.3.107:3306/test", "user", "pwd",
-//				"select * from site_item_price", from);
-		 init.run("jdbc:mysql://192.168.1.30:3306/extension", "root",
-		 "4rfv&UJM", "select * from site_item_price", from);
-	}
-
-	public static void merge() throws IOException, SQLException {
-		MergeWeight mer = new MergeWeight();
-		mer.run();
-	}
-
-	public static void update() throws IOException, SQLException {
-		Update update = new Update();
-		update.run("jdbc:mysql://192.168.1.30:3306/extension", "root",
-				"4rfv&UJM", "select * from site_item");
-//		 update.run("jdbc:mysql://192.168.3.107:3306/test", "user", "pwd",
-//		 "select * from site_item");
-	}
-
-	public static void select(int K, String date) throws IOException,
-			ParseException, SQLException {
-		SimpleDateFormat fmt = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-		Date dateTime = fmt.parse(date);
-		System.out.println(dateTime);
-		TopK select = new TopK();
-		Item[] items = select.run(K, dateTime.getTime());
-		for (Item item : items) {
-			if (item == null)
-				continue;
-			System.out
-					.format("id = %d, update_time = %s price = %f, minPrice = %f, len = %d weight = %f \n",
-							item.id, fmt.format(item.update_time), item.current_pice, item.min_price,
-							item.elemLength, item.weight);
+			merge(Integer.parseInt(argvs[2]));
+			update("http://192.168.1.30:8080/solr/suggest_system");
+		} else if (argvs[0].equals("-clear")) {
+			clearIndex("http://192.168.1.30:8080/solr/suggest_system");
 		}
+
+		// init(0);
+		// merge(0);
+		// select(100, "2010-01-15 00:00:00");
+		// clearIndex("http://192.168.1.30:8080/solr/suggest_system");
+		// update("http://192.168.1.30:8080/solr/suggest_system");
+		// upload(100, "http://192.168.1.30:8080/solr/suggest_system");
 	}
+
 }

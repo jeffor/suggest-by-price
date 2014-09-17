@@ -31,9 +31,9 @@ public class Initialize extends Operate {
 		ResultSet rst = null;
 		Statement stmt = conn.createStatement();
 		/* 遍历数据库更新item */
-		int id = from > 0 ? from : 0;
+		maxId = from > 0 ? from : 0;
 		do {
-			String query = sql + " where id >  " + id + " limit " + delta;
+			String query = sql + " where id >  " + maxId + " limit " + delta;
 			System.out.println(query);
 			rst = stmt.executeQuery(query);
 			/* 遍历数据库，索引数据 */
@@ -46,26 +46,26 @@ public class Initialize extends Operate {
 					e.printStackTrace();
 					System.err.println("itemid = " + rst.getInt(itemIdField)
 							+ "price = " + rst.getFloat(priceField)
-							+ "update_time = " + rst.getTimestamp(dateField));
+							+ "create_time = " + rst.getTimestamp(dateField));
 				}
 			rst.last();
 			if (rst.getRow() > 0)
-				id = rst.getInt(idField);
+				maxId = rst.getInt(idField);
 		} while (rst.getRow() == delta);
 		writeConfig(); // 更新配置文件
+		System.out.println("maxid = " + maxId);
 		closeFiles(); // 关闭索引文件和数据库连接
 	}
 
 	private void updateItem(int id, float price, Date date) throws IOException {
 		Item item = metaFile.read(id);
-		priceFile.writePrice(id, item.elemLength++, price);
-		if (date != null) {
+		if (price != 0 && date != null
+				&& date.getTime() > item.update_time) {
+			priceFile.writePrice(id, item.elemLength++, price);
 			item.update_time = date.getTime();
-			if (item.update_time > update_time)
-				update_time = item.update_time;
+			metaFile.write(item);
+			if (maxItemid < id)
+				maxItemid = id;
 		}
-		metaFile.write(item);
-		if (maxId < id)
-			maxId = id;
 	}
 }

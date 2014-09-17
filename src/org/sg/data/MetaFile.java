@@ -8,6 +8,7 @@ import java.util.Arrays;
 public class MetaFile extends SFile {
 	static private final String metaFileName = "./lib/suggest.idx_"; // 文件名前缀
 	static protected final int metaSize = 24; // 元素大小
+	
 	/* meta data filed */
 	private RandomAccessFile metaFile; // 当前文件句柄缓存
 	private int maxId = 0;
@@ -19,32 +20,15 @@ public class MetaFile extends SFile {
 		if (locate < metaFile.length()) {
 			metaFile.seek(locate);
 			return new Item(id, metaFile.readInt(), metaFile.readFloat(),
-					metaFile.readLong(), metaFile.readFloat(), metaFile.readFloat());
+					metaFile.readLong(), metaFile.readFloat(),
+					metaFile.readFloat());
 		} else {
 			return new Item(id, 0, 0, 0, 0, 999999999);
 		}
 	}
 
-	public void goHead(int maxId) throws IOException {
-		itrId = 0;
-		this.maxId = maxId;
-	}
-
-	public Item nextItem() throws IOException {
-		if (itrId <= maxId) {
-			if (itrId % capacity == 0)
-				getMetaFile(itrId);
-			if (metaFile.length() <= metaFile.getFilePointer())
-				return new Item(itrId++, 0, 0, 0, 0, 999999999);
-			return new Item(itrId++, metaFile.readInt(), metaFile.readFloat(),
-					metaFile.readLong(), metaFile.readFloat(), metaFile.readFloat());
-		}
-		return null;
-	}
-
 	/* 写元数据文件 */
-	public void write(Item item)
-			throws IOException {
+	public void write(Item item) throws IOException {
 		long locate = getMetaFile(item.id);
 		metaFile.seek(locate);
 		metaFile.writeInt(item.elemLength);
@@ -52,6 +36,27 @@ public class MetaFile extends SFile {
 		metaFile.writeLong(item.update_time);
 		metaFile.writeFloat(item.current_pice);
 		metaFile.writeFloat(item.min_price);
+	}
+
+	public void goHead(int maxId, int startId) throws IOException {
+		itrId = startId;
+		this.maxId = maxId;
+	}
+
+	public Item nextItem() throws IOException {
+		long locate = 0;
+		if (itrId <= maxId) {
+			if (itrId % capacity == 0) { // 获得价格文件句柄并定位文件偏移
+				locate = getMetaFile(itrId);
+				metaFile.seek(locate);
+			}
+			if (metaFile.length() <= metaFile.getFilePointer())
+				return new Item(itrId++, 0, 0, 0, 0, 999999999);
+			return new Item(itrId++, metaFile.readInt(), metaFile.readFloat(),
+					metaFile.readLong(), metaFile.readFloat(),
+					metaFile.readFloat());
+		}
+		return null;
 	}
 
 	/* 获得元数据文件，返回推荐指针偏移量 */

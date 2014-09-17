@@ -15,7 +15,7 @@ public class Operate {
 	protected static final String idField = "id";
 	protected static final String priceField = "price";
 	protected static final String itemIdField = "item_id";
-	protected static final String dateField = "update_time";
+	protected static final String dateField = "create_time";
 	protected static final String mysqlClass = "com.mysql.jdbc.Driver";
 	protected static final int delta = 20000; // 数据库读取缓存量
 	protected static final String cfgFileName = "./lib/suggest.cfg";
@@ -25,8 +25,8 @@ public class Operate {
 	protected MetaFile metaFile = new MetaFile();
 	protected PriceFile priceFile = new PriceFile();
 
+	protected long maxItemid;
 	protected long maxId;
-	protected long update_time;
 
 
 	/** 初始化加载数据库驱动 */
@@ -41,8 +41,8 @@ public class Operate {
 	/* 写配置 */
 	protected void writeConfig() throws IOException {
 		cfgFile.seek(0);
-		cfgFile.writeLong(update_time);
 		cfgFile.writeLong(maxId);
+		cfgFile.writeLong(maxItemid);
 	}
 
 	/* 初始化数据库连接，打开索引文件 */
@@ -56,11 +56,11 @@ public class Operate {
 	protected void openFiles() throws IOException {
 		cfgFile = new RandomAccessFile(new File(cfgFileName), "rw");
 		if(cfgFile.length() > 0){
-			update_time = cfgFile.readLong()-60*60*1000;
 			maxId = cfgFile.readLong();
+			maxItemid = cfgFile.readLong();
 		}
 		else{
-			update_time = maxId = -1;
+			maxItemid = maxId = -1;
 		}
 	}
 

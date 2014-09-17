@@ -2,7 +2,6 @@ package org.sg.util;
 
 import org.sg.data.Item;
 
-
 public class Heap {
 	private Item[] heap; // 堆地址
 	private int length; // 元素个数
@@ -18,6 +17,11 @@ public class Heap {
 		this.length = 0;
 	}
 
+	/** 清空堆 */
+	public void clear() {
+		this.length = 0;
+	}
+
 	/**
 	 * 增加元素
 	 * 
@@ -25,7 +29,11 @@ public class Heap {
 	 *            item 待增加的元素
 	 * @return void
 	 * */
-	public void add(Item item) {
+	public void add(Item item, long baseTime) {
+		if (item.update_time < baseTime || item.elemLength == 0
+				|| item.current_pice <= 0 || item.weight <= 1
+				|| item.weight > 10 || item.min_price != item.current_pice) // 业务筛选逻辑（可更改）
+			return;
 		if (length < heap.length) {
 			heap[length++] = item;
 			rebalance_tail();
@@ -39,22 +47,17 @@ public class Heap {
 	 * 堆排序
 	 * 
 	 * @param void
-	 * @return boolean 
-	 *            排序结果布尔值
+	 * @return boolean 排序结果布尔值
 	 * */
-	public boolean sort() {
-		if (length < 2)
-			return false;
-		int index = length - 1;
-		while (index > 0) {
-			swap(index, 0);
-			rebalance_head(index--);
+	public void sort() {
+		while (length-- > 1) {
+			swap(length, 0);
+			rebalance_head(length);
 		}
-		return true;
 	}
-	
-	/*返回堆结果*/
-	public Item[] iterator(){
+
+	/* 返回堆结果 */
+	public Item[] iterator() {
 		return heap;
 	}
 
@@ -63,20 +66,26 @@ public class Heap {
 		int tail = length - 1;
 		int parent = 0;
 		while (tail > 0) {
-			parent = (tail & 1) == 1 ? (tail >> 1) : (tail >> 1) - 1;
+			parent = parentId(tail);
 			if (heap[parent].weight > heap[tail].weight) {
 				swap(parent, tail);
 				tail = parent;
-			} 
-			else 	break;
+			} else
+				break;
 		}
+	}
+
+	private int parentId(int id) {
+		if (id < 1)
+			return -1;
+		return ((id & 1) == 1) ? id >> 1 : (id >> 1) - 1;
 	}
 
 	/* 首部元素再平衡 */
 	private void rebalance_head(int length) {
 		int start = 0;
-		int lchild = (start << 1) + 1;
-		int rchild = (start << 1) + 2;
+		int lchild = 1;
+		int rchild = 2;
 		while (lchild < length) {
 			if (rchild >= length) {
 				if (heap[start].weight > heap[lchild].weight)
@@ -105,4 +114,3 @@ public class Heap {
 	}
 
 }
-
