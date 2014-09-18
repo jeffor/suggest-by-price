@@ -79,6 +79,7 @@ public class Test {
 			// update.run("jdbc:mysql://192.168.3.107:3306/test", "user", "pwd",
 			// "select * from site_item_price", heap);
 			upload(set, url);
+			from = 0;
 			Thread.sleep(1000 * 60 * 60);
 		}
 	}
