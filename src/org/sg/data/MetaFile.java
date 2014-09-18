@@ -58,6 +58,14 @@ public class MetaFile extends SFile {
 		}
 		return null;
 	}
+	
+	public long length() throws IOException{
+		return metaFile.length();
+	}
+	
+	public long pointer() throws IOException{
+		return metaFile.getFilePointer();
+	}
 
 	/* 获得元数据文件，返回推荐指针偏移量 */
 	private long getMetaFile(int id) throws IOException {

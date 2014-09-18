@@ -59,7 +59,23 @@ public class Test {
 		while (true) {
 			set.clear();
 			update.run("jdbc:mysql://192.168.1.30:3306/extension", "root",
-					"4rfv&UJM", "select * from site_item_price", set);
+					"4rfv&UJM", "select * from site_item_price", set, 0);
+			// update.run("jdbc:mysql://192.168.3.107:3306/test", "user", "pwd",
+			// "select * from site_item_price", heap);
+			upload(set, url);
+			Thread.sleep(1000 * 60 * 60);
+		}
+	}
+
+	public static void pureUpdate(String url, long from) throws IOException, SQLException,
+			InterruptedException, ParseException, NumberFormatException,
+			SolrServerException {
+		ItemSet set = new ItemSet(); // 更新索引并 TopN 堆
+		Update update = new Update(); // 初始化数据更新对象
+		while (true) {
+			set.clear();
+			update.run("jdbc:mysql://192.168.1.30:3306/extension", "root",
+					"4rfv&UJM", "select * from site_item_price", set, from);
 			// update.run("jdbc:mysql://192.168.3.107:3306/test", "user", "pwd",
 			// "select * from site_item_price", heap);
 			upload(set, url);
@@ -79,7 +95,7 @@ public class Test {
 	private static ItemSet upload(String url) throws ParseException,
 			NumberFormatException, SolrServerException, IOException,
 			SQLException {
-		long baseTime = System.currentTimeMillis() - 24*60*60*1000;
+		long baseTime = System.currentTimeMillis() - 24 * 60 * 60 * 1000;
 		TopK top = new TopK();
 		top.run(baseTime);
 		upload(top.getSet(), url);
@@ -96,8 +112,8 @@ public class Test {
 			throws NumberFormatException, SolrServerException, IOException,
 			ParseException, SQLException {
 		System.out.println("sync time = " + new Date());
-		Collection<SolrInputDocument> docs = solr.readDocs(set,
-				"root", "4rfv&UJM", "jdbc:mysql://192.168.1.30:3306/extension");
+		Collection<SolrInputDocument> docs = solr.readDocs(set, "root",
+				"4rfv&UJM", "jdbc:mysql://192.168.1.30:3306/extension");
 		// Collection<SolrInputDocument> docs = solr.readDocs(heap.iterator(),
 		// fmt
 		// .parse(date).getTime(), "user", "pwd",
@@ -133,6 +149,8 @@ public class Test {
 			merge(Integer.parseInt(argvs[1]));
 		} else if (argvs[0].equals("-update")) {
 			update("http://192.168.1.30:8080/solr/suggest_system");
+		} else if (argvs[0].equals("-pupdate")) {
+			pureUpdate("http://192.168.1.30:8080/solr/suggest_system", Integer.parseInt(argvs[1]));
 		} else if (argvs[0].equals("-server")) {
 			init(Integer.parseInt(argvs[1]));
 			merge(Integer.parseInt(argvs[2]));

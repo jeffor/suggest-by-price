@@ -12,11 +12,12 @@ import org.sg.util.ItemSet;
 public class Update extends Operate {
 
 	public void run(String DBURL, String DBUSER, String DBPWD, String sql,
-		ItemSet set) throws IOException, SQLException {
+			ItemSet set, long from) throws IOException, SQLException {
 		initialize(DBURL, DBUSER, DBPWD); // 初始化：读取配置文件，打开索引文件，连接数据库
 		ResultSet rst = null;
 		Statement stmt = conn.createStatement();
-		// maxId = 0;
+		if (from > 0)
+			maxId = from;
 		/* 遍历数据库更新item */
 		do {
 			String query = sql + " where id >  " + maxId + " limit " + delta;
@@ -30,9 +31,10 @@ public class Update extends Operate {
 							rst.getTimestamp(dateField), set);
 				} catch (Exception e) {
 					e.printStackTrace();
-					System.err.println("itemid = " + rst.getInt(itemIdField)
-							+ "price = " + rst.getFloat(priceField)
-							+ "create_time = " + rst.getTimestamp(dateField));
+					System.out.format(
+							"itemid = %d filePoint = %d fileLength = %d \n",
+							rst.getInt(itemIdField), metaFile.pointer(),
+							metaFile.length());
 				}
 			rst.last();
 			if (rst.getRow() > 0)
@@ -43,10 +45,10 @@ public class Update extends Operate {
 		closeFiles(); // 关闭索引文件和数据库连接
 	}
 
-	private void updateItem(int id, float price, Date date, ItemSet set) throws IOException {
+	private void updateItem(int id, float price, Date date, ItemSet set)
+			throws IOException {
 		Item item = metaFile.read(id);
-		if (date != null && price != 0
-				&& date.getTime() > item.update_time) {
+		if (date != null && price != 0 && date.getTime() > item.update_time) {
 			priceFile.writePrice(item.id, item.elemLength, price); // 写入新价格
 			priceFile.updateItem(item, price, date.getTime());
 			metaFile.write(item);
